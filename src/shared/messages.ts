@@ -504,6 +504,33 @@ export interface OpenClaudeInTerminalResponse {
 //     method: string;
 // }
 
+
+/**
+ * 获取设置请求
+ */
+export interface GetSettingsRequest {
+    type: "get_settings";
+}
+
+export interface GetSettingsResponse {
+    type: "get_settings_response";
+    settings: any;
+}
+
+/**
+ * 更新设置请求
+ */
+export interface UpdateSettingRequest {
+    type: "update_setting";
+    key: string;
+    value: any;
+}
+
+export interface UpdateSettingResponse {
+    type: "update_setting_response";
+    success: boolean;
+}
+
 // ============================================================================
 // Extension → WebView 请求类型
 // ============================================================================
@@ -618,7 +645,10 @@ export type WebViewRequest =
     // | LoginRequest
     // | SubmitOAuthCodeRequest
     | OpenConfigFileRequest
-    | OpenClaudeInTerminalRequest;
+    | OpenConfigFileRequest
+    | OpenClaudeInTerminalRequest
+    | GetSettingsRequest
+    | UpdateSettingRequest;
 
 /**
  * Extension → WebView 的所有响应类型
@@ -648,7 +678,10 @@ export type WebViewRequestResponse =
     // | LoginResponse
     // | SubmitOAuthCodeResponse
     | OpenConfigFileResponse
-    | OpenClaudeInTerminalResponse;
+    | OpenConfigFileResponse
+    | OpenClaudeInTerminalResponse
+    | GetSettingsResponse
+    | UpdateSettingResponse;
 
 /**
  * Extension → WebView 的所有请求类型

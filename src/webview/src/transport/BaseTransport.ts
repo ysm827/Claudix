@@ -201,6 +201,14 @@ export abstract class BaseTransport {
     return this.sendRequest({ type: "get_asset_uris" });
   }
 
+  getSettings(): Promise<any> {
+    return this.sendRequest({ type: "get_settings" });
+  }
+
+  updateSetting(key: string, value: any): Promise<any> {
+    return this.sendRequest({ type: "update_setting", key, value });
+  }
+
   showNotification(
     message: string,
     severity: ShowNotificationRequest["severity"],
@@ -281,9 +289,11 @@ export abstract class BaseTransport {
           case "response": {
             const handler = this.outstandingRequests.get(message.requestId);
             if (!handler) {
-              console.warn(
-                `[BaseTransport] No handler for response ${message.requestId}`
-              );
+              // 多 WebView 宿主场景下，其他实例也会收到响应但没有对应的 pending request
+              // 这是预期行为，这里静默忽略
+              // console.warn(
+              //   `[BaseTransport] No handler for response ${message.requestId}`
+              // );
               break;
             }
             const response = (message as any).response;

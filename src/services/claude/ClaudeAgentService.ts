@@ -75,6 +75,8 @@ import {
     // handleGetAuthStatus,
     // handleLogin,
     // handleSubmitOAuthCode,
+    handleGetSettings,
+    handleUpdateSetting,
 } from './handlers/handlers';
 
 export const IClaudeAgentService = createDecorator<IClaudeAgentService>('claudeAgentService');
@@ -703,6 +705,13 @@ export class ClaudeAgentService implements IClaudeAgentService {
 
             case "open_config_file":
                 return handleOpenConfigFile(request, this.handlerContext);
+
+            // 设置持久化
+            case "get_settings":
+                return handleGetSettings(request, this.handlerContext);
+
+            case "update_setting":
+                return handleUpdateSetting(request, this.handlerContext);
 
             // 会话管理
             case "list_sessions_request":

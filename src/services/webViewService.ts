@@ -187,7 +187,9 @@ export class WebViewService implements IWebViewService {
 			}
 		);
 
-		this.registerWebview(panel.webview, {
+		const panelWebview = panel.webview;
+
+		this.registerWebview(panelWebview, {
 			host: 'editor',
 			page,
 			id: key
@@ -195,8 +197,8 @@ export class WebViewService implements IWebViewService {
 
 		panel.onDidDispose(
 			() => {
-				this.webviews.delete(panel.webview);
-				this.webviewConfigs.delete(panel.webview);
+				this.webviews.delete(panelWebview);
+				this.webviewConfigs.delete(panelWebview);
 				this.editorPanels.delete(key);
 				this.logService.info(`[WebViewService] 主编辑器 WebView 面板已销毁: page=${page}, id=${key}`);
 			},
@@ -312,7 +314,7 @@ export class WebViewService implements IWebViewService {
 		// Vite 开发场景的 CSP：允许连接 devServer 与 HMR 的 ws
 		const csp = [
 			`default-src 'none';`,
-			`img-src ${webview.cspSource} https: data:;`,
+			`img-src ${webview.cspSource} 'self' https: data: blob: http: ${origin};`,
 			`style-src ${webview.cspSource} 'unsafe-inline' ${origin} https://*.vscode-cdn.net;`,
 			`font-src ${webview.cspSource} data: ${origin};`,
 			`script-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-eval' ${origin};`,

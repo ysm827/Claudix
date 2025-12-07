@@ -54,6 +54,10 @@ import type {
     OpenConfigFileResponse,
     OpenClaudeInTerminalRequest,
     OpenClaudeInTerminalResponse,
+    GetSettingsRequest,
+    GetSettingsResponse,
+    UpdateSettingRequest,
+    UpdateSettingResponse,
 } from '../../../shared/messages';
 import type { HandlerContext } from './types';
 import type { PermissionMode, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -137,6 +141,34 @@ export async function handleGetAssetUris(
     return {
         type: "asset_uris_response",
         assetUris: getAssetUris(context)
+    };
+}
+
+/**
+ * Handle get_settings request
+ */
+export async function handleGetSettings(
+    _request: GetSettingsRequest,
+    context: HandlerContext
+): Promise<GetSettingsResponse> {
+    const settings = await context.configService.getUserSettings();
+    return {
+        type: "get_settings_response",
+        settings
+    };
+}
+
+/**
+ * Handle update_setting request
+ */
+export async function handleUpdateSetting(
+    request: UpdateSettingRequest,
+    context: HandlerContext
+): Promise<UpdateSettingResponse> {
+    await context.configService.updateUserSetting(request.key, request.value);
+    return {
+        type: "update_setting_response",
+        success: true
     };
 }
 

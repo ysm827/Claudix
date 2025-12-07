@@ -30,6 +30,16 @@ export interface IConfigurationService {
 	 * 配置变更事件
 	 */
 	onDidChangeConfiguration: vscode.Event<vscode.ConfigurationChangeEvent>;
+
+	/**
+	 * 获取用户设置（文件持久化）
+	 */
+	getUserSettings(): Promise<any>;
+
+	/**
+	 * 更新用户设置（文件持久化）
+	 */
+	updateUserSetting(key: string, value: any): Promise<void>;
 }
 
 export class ConfigurationService implements IConfigurationService {
@@ -67,5 +77,59 @@ export class ConfigurationService implements IConfigurationService {
 		// 单级配置
 		const config = vscode.workspace.getConfiguration();
 		return config.update(section, value, target);
+	}
+
+	// ===== User Settings Persistence (File-based) =====
+
+	private _userSettingsCache: any = null;
+
+	private getConfigFile(): string {
+		const homeDir = require('os').homedir();
+		const configDir = require('path').join(homeDir, '.claude');
+
+		// Ensure directory exists
+		if (!require('fs').existsSync(configDir)) {
+			try {
+				require('fs').mkdirSync(configDir, { recursive: true });
+			} catch (error) {
+				console.error(`[ConfigurationService] Failed to create config directory: ${error}`);
+			}
+		}
+
+		return require('path').join(configDir, 'claudix.json');
+	}
+
+	async getUserSettings(): Promise<any> {
+		if (this._userSettingsCache) {
+			return this._userSettingsCache;
+		}
+
+		const configPath = this.getConfigFile();
+		try {
+			if (require('fs').existsSync(configPath)) {
+				const content = await require('fs').promises.readFile(configPath, 'utf8');
+				this._userSettingsCache = JSON.parse(content);
+			} else {
+				this._userSettingsCache = {};
+			}
+		} catch (error) {
+			console.error(`[ConfigurationService] Failed to read settings: ${error}`);
+			this._userSettingsCache = {};
+		}
+
+		return this._userSettingsCache;
+	}
+
+	async updateUserSetting(key: string, value: any): Promise<void> {
+		await this.getUserSettings(); // Ensure cache is loaded
+
+		this._userSettingsCache[key] = value;
+		const configPath = this.getConfigFile();
+
+		try {
+			await require('fs').promises.writeFile(configPath, JSON.stringify(this._userSettingsCache, null, 2), 'utf8');
+		} catch (error) {
+			console.error(`[ConfigurationService] Failed to save settings: ${error}`);
+		}
 	}
 }

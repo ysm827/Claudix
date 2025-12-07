@@ -1,11 +1,11 @@
 import { onMounted, onUnmounted, watch } from 'vue';
 import { signal, effect } from 'alien-signals';
-import { EventEmitter } from '../utils/events';
 import { ConnectionManager } from '../core/ConnectionManager';
-import { VSCodeTransport } from '../transport/VSCodeTransport';
 import { AppContext } from '../core/AppContext';
 import { SessionStore } from '../core/SessionStore';
 import type { SelectionRange } from '../core/Session';
+import { EventEmitter } from '../utils/events';
+import { transport, atMentionEvents, selectionEvents } from '../core/runtimeTransport';
 
 export interface RuntimeInstance {
   connectionManager: ConnectionManager;
@@ -16,10 +16,8 @@ export interface RuntimeInstance {
 }
 
 export function useRuntime(): RuntimeInstance {
-  const atMentionEvents = new EventEmitter<string>();
-  const selectionEvents = new EventEmitter<any>();
-
-  const connectionManager = new ConnectionManager(() => new VSCodeTransport(atMentionEvents, selectionEvents));
+  // 复用全局 Transport 实例，确保同一 Webview 宿主只存在一条通信通道
+  const connectionManager = new ConnectionManager(() => transport);
   const appContext = new AppContext(connectionManager);
 
   // 创建 alien-signal 用于 SessionContext
