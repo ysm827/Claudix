@@ -47,6 +47,7 @@
       :has-input-content="!!content.trim()"
       :show-progress="showProgress"
       :progress-percentage="progressPercentage"
+      :context-tooltip="contextTooltip"
       :thinking-level="thinkingLevel"
       :permission-mode="permissionMode"
       @submit="handleSubmit"
@@ -150,6 +151,7 @@ import { getFileReferences, fileToDropdownItem } from '../providers/fileReferenc
 interface Props {
   showProgress?: boolean
   progressPercentage?: number
+  contextTooltip?: string
   placeholder?: string
   readonly?: boolean
   showSearch?: boolean
@@ -176,10 +178,11 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   showProgress: true,
   progressPercentage: 48.7,
+  contextTooltip: '',
   placeholder: 'Plan, @ for context, / for commands...',
   readonly: false,
   showSearch: false,
-  selectedModel: 'claude-opus-4-5',
+  selectedModel: 'default',
   conversationWorking: false,
   attachments: () => [],
   thinkingLevel: 'default_on',

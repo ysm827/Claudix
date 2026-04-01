@@ -41,7 +41,7 @@
                 class="line-number-item"
                 :class="getDiffLineClass(line)"
               >
-                {{ getLineNumber(patch, lineIndex) }}
+                {{ getLineNumber(patch, lineIndex as number) }}
               </div>
             </div>
           </div>

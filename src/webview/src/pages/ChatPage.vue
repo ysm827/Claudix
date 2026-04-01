@@ -62,6 +62,7 @@
           <ChatInputBox
             :show-progress="true"
             :progress-percentage="progressPercentage"
+            :context-tooltip="contextTooltip"
             :conversation-working="isBusy"
             :attachments="attachments"
             :thinking-level="session?.thinkingLevel.value"
@@ -146,19 +147,30 @@
   // 注册命令：permissionMode.toggle（在下方定义函数后再注册）
 
   // 估算 Token 使用占比（基于 usageData）
-  const progressPercentage = computed(() => {
+  const usageComputed = computed(() => {
     const s = session.value;
-    if (!s) return 0;
+    if (!s) return { percentage: 0, totalTokens: 0, contextWindow: 200000 };
 
     const usage = s.usageData.value;
     const total = usage.totalTokens;
     const windowSize = usage.contextWindow || 200000;
+    const percentage = (typeof total === 'number' && total > 0)
+      ? Math.max(0, Math.min(100, (total / windowSize) * 100))
+      : 0;
 
-    if (typeof total === 'number' && total > 0) {
-      return Math.max(0, Math.min(100, (total / windowSize) * 100));
-    }
+    return { percentage, totalTokens: total, contextWindow: windowSize };
+  });
 
-    return 0;
+  const progressPercentage = computed(() => usageComputed.value.percentage);
+
+  const contextTooltip = computed(() => {
+    const { totalTokens, contextWindow } = usageComputed.value;
+    const fmt = (n: number) => {
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+      return `${n}`;
+    };
+    return `${fmt(totalTokens)} / ${fmt(contextWindow)} context used`;
   });
 
   // DOM refs

@@ -130,6 +130,7 @@ function handleModeSelect(item: DropdownItemData, close: () => void) {
   background: color-mix(in srgb, var(--vscode-foreground) 20%, transparent);
   transition: background-color 0.2s ease;
   opacity: .8;
+  user-select: none;
 }
 
 .mode-dropdown:hover {

@@ -59,6 +59,7 @@ export class WebViewService implements IWebViewService {
 
 	private readonly webviews = new Set<vscode.Webview>();
 	private readonly webviewConfigs = new Map<vscode.Webview, WebviewBootstrapConfig>();
+	private readonly webviewIdMap = new Map<string, vscode.Webview>();
 	private messageHandler?: (message: any) => void;
 	private readonly editorPanels = new Map<string, vscode.WebviewPanel>();
 
@@ -85,6 +86,7 @@ export class WebViewService implements IWebViewService {
 		// WebviewView 的销毁由 VSCode 管理，这里仅作日志记录
 		webviewView.onDidDispose(
 			() => {
+				this.removeWebview(webviewView.webview);
 				this.logService.info('侧边栏 WebView 视图已销毁');
 			},
 			undefined,
@@ -109,8 +111,6 @@ export class WebViewService implements IWebViewService {
 	 * 广播消息到所有已注册的 WebView
 	 */
 	postMessage(message: any): void {
-		// 目前 ClaudeAgentService 只需要与侧边栏聊天视图通信
-		// 因此这里只向 host === 'sidebar' 且 page === 'chat' 的 WebView 发送消息
 		if (this.webviews.size === 0) {
 			this.logService.warn('[WebViewService] 当前没有可用的 WebView 实例，消息将被丢弃');
 			return;
@@ -121,6 +121,23 @@ export class WebViewService implements IWebViewService {
 			message
 		};
 
+		const targetId = message?.webviewId as string | undefined;
+		if (targetId) {
+			const targetWebview = this.webviewIdMap.get(targetId);
+			if (!targetWebview) {
+				this.logService.warn(`[WebViewService] 找不到目标 WebView: ${targetId}`);
+				return;
+			}
+			try {
+				targetWebview.postMessage(payload);
+			} catch (error) {
+				this.logService.warn('[WebViewService] 向目标 WebView 发送消息失败，将移除该实例', error as Error);
+				this.removeWebview(targetWebview);
+			}
+			return;
+		}
+
+		// 默认仅向侧边栏 chat WebView 发送消息，避免误广播
 		const toRemove: vscode.Webview[] = [];
 
 		for (const webview of this.webviews) {
@@ -138,8 +155,7 @@ export class WebViewService implements IWebViewService {
 		}
 
 		for (const webview of toRemove) {
-			this.webviews.delete(webview);
-			this.webviewConfigs.delete(webview);
+			this.removeWebview(webview);
 		}
 	}
 
@@ -187,7 +203,9 @@ export class WebViewService implements IWebViewService {
 			}
 		);
 
-		this.registerWebview(panel.webview, {
+		const panelWebview = panel.webview;
+
+		this.registerWebview(panelWebview, {
 			host: 'editor',
 			page,
 			id: key
@@ -195,8 +213,7 @@ export class WebViewService implements IWebViewService {
 
 		panel.onDidDispose(
 			() => {
-				this.webviews.delete(panel.webview);
-				this.webviewConfigs.delete(panel.webview);
+				this.removeWebview(panelWebview);
 				this.editorPanels.delete(key);
 				this.logService.info(`[WebViewService] 主编辑器 WebView 面板已销毁: page=${page}, id=${key}`);
 			},
@@ -223,13 +240,17 @@ export class WebViewService implements IWebViewService {
 		// 保存实例及其配置
 		this.webviews.add(webview);
 		this.webviewConfigs.set(webview, bootstrap);
+		const webviewId = this.getWebviewId(bootstrap);
+		this.webviewIdMap.set(webviewId, webview);
 
 		// 连接消息处理器
 		webview.onDidReceiveMessage(
 			message => {
 				this.logService.info(`[WebView → Extension] 收到消息: ${message.type}`);
 				if (this.messageHandler) {
-					this.messageHandler(message);
+					const taggedMessage =
+						message && typeof message === 'object' ? { ...message, webviewId } : message;
+					this.messageHandler(taggedMessage);
 				}
 			},
 			undefined,
@@ -312,7 +333,7 @@ export class WebViewService implements IWebViewService {
 		// Vite 开发场景的 CSP：允许连接 devServer 与 HMR 的 ws
 		const csp = [
 			`default-src 'none';`,
-			`img-src ${webview.cspSource} https: data:;`,
+			`img-src ${webview.cspSource} 'self' https: data: blob: http: ${origin};`,
 			`style-src ${webview.cspSource} 'unsafe-inline' ${origin} https://*.vscode-cdn.net;`,
 			`font-src ${webview.cspSource} data: ${origin};`,
 			`script-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-eval' ${origin};`,
@@ -344,6 +365,20 @@ export class WebViewService implements IWebViewService {
     <script type="module" nonce="${nonce}" src="${entry}"></script>
 </body>
 </html>`;
+	}
+
+	private getWebviewId(bootstrap: WebviewBootstrapConfig): string {
+		return `${bootstrap.host}:${bootstrap.page ?? ''}:${bootstrap.id ?? ''}`;
+	}
+
+	private removeWebview(webview: vscode.Webview): void {
+		this.webviews.delete(webview);
+		const config = this.webviewConfigs.get(webview);
+		if (config) {
+			const webviewId = this.getWebviewId(config);
+			this.webviewIdMap.delete(webviewId);
+		}
+		this.webviewConfigs.delete(webview);
 	}
 
 	/**

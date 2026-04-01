@@ -23,7 +23,7 @@ import { IFileSystemService } from '../fileSystemService';
 import { INotificationService } from '../notificationService';
 import { ITerminalService } from '../terminalService';
 import { ITabsAndEditorsService } from '../tabsAndEditorsService';
-import { IClaudeSdkService } from './ClaudeSdkService';
+import { IClaudeSdkService, type SdkQueryParams } from './ClaudeSdkService';
 import { IClaudeSessionService } from './ClaudeSessionService';
 import { AsyncStream, ITransport } from './transport';
 import { HandlerContext } from './handlers/types';
@@ -75,6 +75,15 @@ import {
     // handleGetAuthStatus,
     // handleLogin,
     // handleSubmitOAuthCode,
+    handleGetSettings,
+    handleUpdateSetting,
+    handleResetSetting,
+    handleSwitchProfile,
+    handleCreateProfile,
+    handleDeleteProfile,
+    handleGetExtensionConfig,
+    handleUpdateExtensionConfig,
+    handleSdkProbe,
 } from './handlers/handlers';
 
 export const IClaudeAgentService = createDecorator<IClaudeAgentService>('claudeAgentService');
@@ -370,6 +379,11 @@ export class ClaudeAgentService implements IClaudeAgentService {
             // 2. 调用 spawnClaude
             this.logService.info('');
             this.logService.info('📝 步骤 2: 调用 spawnClaude()');
+
+            // stderr 致命错误去重（同一 channel 3s 内不重复推送）
+            let lastStderrErrorTime = 0;
+            const STDERR_ERROR_DEBOUNCE_MS = 3000;
+
             const query = await this.spawnClaude(
                 inputStream,
                 resume,
@@ -386,7 +400,22 @@ export class ClaudeAgentService implements IClaudeAgentService {
                 model,
                 cwd,
                 permissionMode,
-                maxThinkingTokens
+                maxThinkingTokens,
+                // onStderrError: 将 SDK stderr 致命错误实时推给前端
+                (error) => {
+                    const now = Date.now();
+                    if (now - lastStderrErrorTime < STDERR_ERROR_DEBOUNCE_MS) return;
+                    lastStderrErrorTime = now;
+
+                    this.logService.warn(`[ClaudeAgentService] 转发 LLM 请求错误到前端: ${error.type} - ${error.message}`);
+                    this.transport?.send({
+                        type: "sdk_error",
+                        channelId,
+                        error: error.message,
+                        statusCode: error.statusCode,
+                        errorType: error.type,
+                    });
+                }
             );
             this.logService.info('  ✓ spawnClaude() 完成，Query 对象已创建');
 
@@ -519,7 +548,8 @@ export class ClaudeAgentService implements IClaudeAgentService {
         model: string | null,
         cwd: string,
         permissionMode: string,
-        maxThinkingTokens: number
+        maxThinkingTokens: number,
+        onStderrError?: SdkQueryParams['onStderrError']
     ): Promise<Query> {
         return this.sdkService.query({
             inputStream,
@@ -528,7 +558,8 @@ export class ClaudeAgentService implements IClaudeAgentService {
             model,
             cwd,
             permissionMode,
-            maxThinkingTokens
+            maxThinkingTokens,
+            onStderrError
         });
     }
 
@@ -590,7 +621,8 @@ export class ClaudeAgentService implements IClaudeAgentService {
             this.transport!.send({
                 type: "response",
                 requestId: message.requestId,
-                response
+                response,
+                webviewId: message.webviewId
             });
         } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
@@ -600,7 +632,8 @@ export class ClaudeAgentService implements IClaudeAgentService {
                 response: {
                     type: "error",
                     error: errorMsg
-                }
+                },
+                webviewId: message.webviewId
             });
         } finally {
             this.abortControllers.delete(message.requestId);
@@ -628,6 +661,9 @@ export class ClaudeAgentService implements IClaudeAgentService {
 
             case "get_claude_state":
                 return handleGetClaudeState(request, this.handlerContext);
+
+            case "sdk_probe":
+                return handleSdkProbe(request as any, this.handlerContext);
 
             case "get_mcp_servers":
                 return handleGetMcpServers(request, this.handlerContext, channelId);
@@ -703,6 +739,33 @@ export class ClaudeAgentService implements IClaudeAgentService {
 
             case "open_config_file":
                 return handleOpenConfigFile(request, this.handlerContext);
+
+            // 设置持久化
+            case "get_settings":
+                return handleGetSettings(request, this.handlerContext);
+
+            case "update_setting":
+                return handleUpdateSetting(request, this.handlerContext);
+
+            case "reset_setting":
+                return handleResetSetting(request, this.handlerContext);
+
+            // Profile 管理
+            case "switch_profile":
+                return handleSwitchProfile(request, this.handlerContext);
+
+            case "create_profile":
+                return handleCreateProfile(request, this.handlerContext);
+
+            case "delete_profile":
+                return handleDeleteProfile(request, this.handlerContext);
+
+            // 扩展配置 (~/.claudix.json)
+            case "get_extension_config":
+                return handleGetExtensionConfig(request, this.handlerContext);
+
+            case "update_extension_config":
+                return handleUpdateExtensionConfig(request, this.handlerContext);
 
             // 会话管理
             case "list_sessions_request":
@@ -893,9 +956,6 @@ export class ClaudeAgentService implements IClaudeAgentService {
 
         // 设置模型到 channel
         await channel.query.setModel(model);
-
-        // 保存到配置
-        await this.configService.updateValue('claudix.selectedModel', model);
 
         this.logService.info(`[setModel] Set channel ${channelId} to model: ${model}`);
     }

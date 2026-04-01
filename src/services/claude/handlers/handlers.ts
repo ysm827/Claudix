@@ -9,7 +9,6 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { execFile } from 'child_process';
 import type {
     InitRequest,
     InitResponse,
@@ -54,6 +53,24 @@ import type {
     OpenConfigFileResponse,
     OpenClaudeInTerminalRequest,
     OpenClaudeInTerminalResponse,
+    GetSettingsRequest,
+    GetSettingsResponse,
+    UpdateSettingRequest,
+    UpdateSettingResponse,
+    ResetSettingRequest,
+    ResetSettingResponse,
+    SwitchProfileRequest,
+    SwitchProfileResponse,
+    CreateProfileRequest,
+    CreateProfileResponse,
+    DeleteProfileRequest,
+    DeleteProfileResponse,
+    GetExtensionConfigRequest,
+    GetExtensionConfigResponse,
+    UpdateExtensionConfigRequest,
+    UpdateExtensionConfigResponse,
+    SdkProbeRequest,
+    SdkProbeResponse
 } from '../../../shared/messages';
 import type { HandlerContext } from './types';
 import type { PermissionMode, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -72,8 +89,8 @@ export async function handleInit(
     // TODO: 从 AuthManager 获取认证状态
     // const authStatus = null;
 
-    // 获取模型设置
-    const modelSetting = configService.getValue<string>('claudix.selectedModel') || 'default';
+    // 获取模型设置（读 CLI settings.json 的 'model' 字段，与 Settings 页 Model Manage 一致）
+    const modelSetting = (await configService.getSetting<string>('model')) || 'default';
 
     // 获取默认工作目录
     const defaultCwd = workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
@@ -117,6 +134,28 @@ export async function handleGetClaudeState(
 }
 
 /**
+ * 一次性 SDK 探测
+ */
+export async function handleSdkProbe(
+    request: SdkProbeRequest,
+    context: HandlerContext
+): Promise<SdkProbeResponse> {
+    const { sdkService, workspaceService } = context;
+    const cwd = workspaceService.getDefaultWorkspaceFolder()?.uri.fsPath || process.cwd();
+    const result = await sdkService.probe({
+        capabilities: request.capabilities ?? [],
+        cwd,
+        timeoutMs: request.timeoutMs
+    });
+
+    return {
+        type: "sdk_probe_response",
+        data: result.data,
+        errors: result.errors
+    };
+}
+
+/**
  * 获取 MCP 服务器
  */
 export async function handleGetMcpServers(
@@ -137,6 +176,168 @@ export async function handleGetAssetUris(
     return {
         type: "asset_uris_response",
         assetUris: getAssetUris(context)
+    };
+}
+
+/**
+ * Handle get_settings request
+ */
+export async function handleGetSettings(
+    _request: GetSettingsRequest,
+    context: HandlerContext
+): Promise<GetSettingsResponse> {
+    // Use getAllSettings() for effective values — it deep-merges object-type settings
+    // (env, permissions, etc.) across profile/default layers correctly.
+    // inspectAll() provides per-key scope/layer metadata for UI rendering.
+    const settings = await context.configService.getAllSettings();
+    const detailedSettings = await context.configService.inspectAll();
+    const metadata: any = {};
+
+    for (const [key, inspection] of Object.entries(detailedSettings)) {
+      metadata[key] = {
+        effectiveScope: inspection.effectiveScope,
+        values: inspection.values
+      };
+    }
+
+    const activeProfile = context.configService.activeProfile;
+    const profiles = await context.configService.getProfiles();
+
+    return {
+      type: 'get_settings_response',
+      settings,
+      metadata,
+      activeProfile,
+      profiles,
+      hasWorkspace: context.configService.hasWorkspace
+    };
+  }
+
+/**
+ * Handle switch_profile request
+ */
+export async function handleSwitchProfile(
+  request: SwitchProfileRequest,
+  context: HandlerContext
+): Promise<SwitchProfileResponse> {
+  await context.configService.switchProfile(request.profile);
+  return {
+    type: 'switch_profile_response',
+    success: true
+  };
+}
+
+/**
+ * Handle create_profile request
+ */
+export async function handleCreateProfile(
+  request: CreateProfileRequest,
+  context: HandlerContext
+): Promise<CreateProfileResponse> {
+  try {
+    await context.configService.createProfile(request.name);
+    return {
+      type: 'create_profile_response',
+      success: true
+    };
+  } catch (e: any) {
+    return {
+      type: 'create_profile_response',
+      success: false,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * Handle delete_profile request
+ */
+export async function handleDeleteProfile(
+  request: DeleteProfileRequest,
+  context: HandlerContext
+): Promise<DeleteProfileResponse> {
+  try {
+    await context.configService.deleteProfile(request.name);
+    return {
+      type: 'delete_profile_response',
+      success: true
+    };
+  } catch (e: any) {
+    return {
+      type: 'delete_profile_response',
+      success: false,
+      error: e.message
+    };
+  }
+}
+
+/**
+ * Handle update_setting request
+ */
+export async function handleUpdateSetting(
+    request: UpdateSettingRequest,
+    context: HandlerContext
+): Promise<UpdateSettingResponse> {
+    // Default to 'global' if target not specified
+    const target = request.target || 'global';
+    await context.configService.updateSetting(request.key, request.value, target);
+    return {
+        type: "update_setting_response",
+        success: true
+    };
+}
+
+/**
+ * Handle reset_setting request (delete value at a specific scope)
+ */
+export async function handleResetSetting(
+    request: ResetSettingRequest,
+    context: HandlerContext
+): Promise<ResetSettingResponse> {
+    await context.configService.resetSetting(request.key, request.target);
+    return {
+        type: "reset_setting_response",
+        success: true
+    };
+}
+
+/**
+ * Handle get_extension_config request
+ */
+export async function handleGetExtensionConfig(
+    _request: GetExtensionConfigRequest,
+    context: HandlerContext
+): Promise<GetExtensionConfigResponse> {
+    const config = await context.configService.getExtensionConfig();
+    return {
+        type: 'get_extension_config_response',
+        config
+    };
+}
+
+/**
+ * Handle update_extension_config request
+ */
+export async function handleUpdateExtensionConfig(
+    request: UpdateExtensionConfigRequest,
+    context: HandlerContext
+): Promise<UpdateExtensionConfigResponse> {
+    await context.configService.updateExtensionConfig(request.key as any, request.value);
+
+    // Broadcast config change to all webviews (so chat page ModelSelect can refresh)
+    context.webViewService.postMessage({
+        type: 'request',
+        requestId: `config-changed-${Date.now()}`,
+        request: {
+            type: 'extension_config_changed',
+            key: request.key,
+            value: request.value,
+        }
+    });
+
+    return {
+        type: 'update_extension_config_response',
+        success: true
     };
 }
 
@@ -921,6 +1122,17 @@ function getConfigFilePath(configType: string): string {
             return path.join(homeDir, ".claude", "settings.json");
         case "config":
             return path.join(homeDir, ".claude", "config.json");
+        case "mcp-global":
+            // Global MCP servers: ~/.claude.json (home directory root, NOT inside .claude/)
+            return path.join(homeDir, ".claude.json");
+        case "mcp-project": {
+            // Project MCP servers: .mcp.json in workspace root
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (!workspaceRoot) {
+                throw new Error("No workspace folder open");
+            }
+            return path.join(workspaceRoot, ".mcp.json");
+        }
         default:
             return path.join(homeDir, ".claude", `${configType}.json`);
     }

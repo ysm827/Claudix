@@ -8,12 +8,7 @@ interface VsCodeApi {
 
 export class VSCodeTransport extends BaseTransport {
     private readonly api: VsCodeApi;
-    private readonly openedPromise: Promise<void>;
     private readonly closedPromise: Promise<void>;
-
-    override get opened(): Promise<void> {
-        return this.openedPromise;
-    }
 
     override get closed(): Promise<void> {
         return this.closedPromise;
@@ -38,7 +33,6 @@ export class VSCodeTransport extends BaseTransport {
 
         window.addEventListener('message', this.handleMessage);
 
-        this.openedPromise = this.initialize();
         this.closedPromise = new Promise(() => {
             /* resolved when extension disposes webview */
         });

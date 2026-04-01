@@ -7,10 +7,7 @@
         @todo-toggle="$emit('todoToggle', $event)"
       />
       <!-- 分割线 - Todo 和 Queue 之间 -->
-      <div
-        v-if="shouldShowTodoQueueDivider"
-        style="height: 1px; background: color-mix(in srgb, var(--vscode-input-border, var(--vscode-widget-border)) 40%, transparent); margin: 2px -5px;"
-      />
+      <Separator v-if="shouldShowTodoQueueDivider" style="margin: 2px -5px;" />
       <MessageQueueList
         :queued-messages="queuedMessages"
         :visible="showQueue"
@@ -18,10 +15,7 @@
         @send-now="$emit('queueSendNow', $event)"
       />
       <!-- 分割线 - Queue 和 Files 之间 -->
-      <div
-        v-if="shouldShowQueueFilesDivider"
-        style="height: 1px; background: color-mix(in srgb, var(--vscode-input-border, var(--vscode-widget-border)) 40%, transparent); margin: 2px -5px;"
-      />
+      <Separator v-if="shouldShowQueueFilesDivider" style="margin: 2px -5px;" />
       <FileEditedList
         :files-edited="filesEdited"
         :visible="showFiles"
@@ -35,6 +29,7 @@ import { computed } from 'vue'
 import TodoList from './TodoList.vue'
 import FileEditedList from './FileEditedList.vue'
 import MessageQueueList from './MessageQueueList.vue'
+import Separator from './Common/Separator.vue'
 import type { Todo, FileEdit } from '../types/toolbar'
 import type { QueuedMessage } from '../types/queue'
 
