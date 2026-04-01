@@ -62,7 +62,7 @@ const handleClick = (event: MouseEvent) => {
     background-color: var(--vscode-button-background)
 }
 
-.cursor-button-primary, .cursor-button-primary :global(.codicon) {
+.cursor-button-primary, .cursor-button-primary .codicon {
     color: var(--vscode-button-foreground)
 }
 
@@ -114,7 +114,7 @@ const handleClick = (event: MouseEvent) => {
     background-color: var(--vscode-errorForeground)
 }
 
-.cursor-button-danger, .cursor-button-danger :global(.codicon) {
+.cursor-button-danger, .cursor-button-danger .codicon {
     color: var(--vscode-button-foreground)
 }
 

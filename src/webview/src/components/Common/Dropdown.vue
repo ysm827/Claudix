@@ -48,7 +48,7 @@ import {
   SelectItem,
   SelectValue,
   useForwardPropsEmits
-} from 'radix-vue'
+} from 'reka-ui';
 
 interface Option {
   label: string
@@ -90,12 +90,13 @@ const selectedOption = computed(() => {
     gap: 10px;
     padding: 3px 2px 3px 6px;
     outline: none;
+    user-select: none;
 }
 
 .solid-dropdown-toggle-label {
     align-items: center;
     display: flex;
-    text-align: left
+    text-align: left;
 }
 
 :global(.solid-dropdown-menu) {

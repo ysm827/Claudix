@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import { SwitchRoot, SwitchThumb, useForwardPropsEmits } from 'radix-vue'
+import { SwitchRoot, SwitchThumb, useForwardPropsEmits } from 'reka-ui';
 import { computed } from 'vue'
 
 const props = defineProps<{
@@ -27,7 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const forwarded = useForwardPropsEmits(computed(() => ({
-  checked: props.modelValue,
+  modelValue: props.modelValue,
 })), emit)
 </script>
 
@@ -44,11 +44,12 @@ const forwarded = useForwardPropsEmits(computed(() => ({
     border: none;
     padding: 0;
     background: transparent;
+    user-select: none;
 }
 
 .solid-switch-small {
     height: 14px;
-    width: 24px
+    width: 24px;
 }
 
 .solid-switch-toggle {
@@ -69,16 +70,16 @@ const forwarded = useForwardPropsEmits(computed(() => ({
 }
 
 .solid-switch-toggle-small {
-    border-radius: 7px
+    border-radius: 7px;
 }
 
 .solid-switch[data-state="checked"] .solid-switch-toggle {
     background-color: var(--cursor-bg-green-primary);
-    box-shadow: 0 0 0 1px var(--vscode-contrastBorder)
+    box-shadow: 0 0 0 1px var(--vscode-contrastBorder);
 }
 
 .solid-switch.solid-switch-on-blue[data-state="checked"] .solid-switch-toggle {
-    background-color: var(--vscode-terminal-ansiBlue)
+    background-color: var(--vscode-terminal-ansiBlue);
 }
 
 .solid-switch-toggle:before {
@@ -90,21 +91,21 @@ const forwarded = useForwardPropsEmits(computed(() => ({
     left: 2px;
     position: absolute;
     transition: .2s ease;
-    width: 14px
+    width: 14px;
 }
 
 .solid-switch-toggle-small:before {
     bottom: 2px;
     height: 10px;
     left: 2px;
-    width: 10px
+    width: 10px;
 }
 
 .solid-switch[data-state="checked"] .solid-switch-toggle:before {
-    transform: translateX(12px)
+    transform: translateX(12px);
 }
 
 .solid-switch[data-state="checked"] .solid-switch-toggle-small:before {
-    transform: translateX(10px)
+    transform: translateX(10px);
 }
 </style>
