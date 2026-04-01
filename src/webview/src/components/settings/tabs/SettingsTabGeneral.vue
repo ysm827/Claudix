@@ -1,176 +1,391 @@
 <template>
   <SettingsTab title="General">
-    <!-- Manage Account Section -->
-    <SettingsSection>
+    <!-- Startup Defaults Section (Extension Config — Pipeline B) -->
+    <SettingsSection title="Startup Defaults">
       <SettingsSubSection>
-        <SettingsCell label="Manage Account" description="Manage your account and billing">
+        <SettingsCell
+          label="Default Permission Mode"
+          description="Permission mode for new sessions"
+        >
           <template #trailing>
-            <Button variant="tertiary" size="small">
-              Open <div class="codicon codicon-link-external" style="font-size: 14px; color: var(--cursor-icon-secondary);"></div>
-            </Button>
+            <Dropdown
+              :model-value="defaultPermissionMode"
+              @update:model-value="updateExtensionSetting('defaultPermissionMode', $event)"
+              :options="permissionModeOptions"
+              menu-align="right"
+            >
+              <template #trigger="{ selected }">
+                {{ selected?.label || 'Default' }}
+              </template>
+            </Dropdown>
           </template>
         </SettingsCell>
-        <SettingsCell label="Upgrade to Ultra" description="Run parallel agents, get maximum value with 20x usage limits, and early access to advanced features." :divider="true">
+        <SettingsCell
+          label="Extended Thinking"
+          description="Enable extended thinking for new sessions"
+          :divider="true"
+        >
           <template #trailing>
-            <Button variant="primary" size="small">
-              <template #icon>
-                <div class="codicon codicon-arrow-circle-up" style="font-size: 12px;"></div>
-              </template>
-              Upgrade
-            </Button>
+            <div class="cursor-settings-cell-switch-container">
+              <Switch
+                :model-value="defaultThinkingLevel === 'default_on'"
+                @update:model-value="updateExtensionSetting('defaultThinkingLevel', $event ? 'default_on' : 'off')"
+                title="Extended Thinking"
+              />
+            </div>
           </template>
         </SettingsCell>
       </SettingsSubSection>
     </SettingsSection>
 
-    <!-- Preferences Section -->
-    <SettingsSection title="Preferences">
+    <!-- Language & Output Section (Pipeline A — CC Settings) -->
+    <SettingsSection title="Language & Output">
       <SettingsSubSection>
-        <SettingsCell label="Default Layout" description="Modify your default layout to focus Agent or the editor">
-          <template #trailing>
-            <!-- Layout Toggle Mockup -->
-            <div class="flex gap-3 py-[3px] justify-center items-center">
-                <div class="flex flex-col items-center gap-2 cursor-pointer" style="opacity: 0.4;">
-                    <div class="flex flex-col items-center justify-center rounded-md transition-colors" style="outline: white solid 1.5px; height: 36px; width: 52px; background: linear-gradient(rgb(73, 96, 157) 0%, rgb(240, 181, 99) 99.52%);">
-                        <div class="flex flex-col justify-center items-center overflow-hidden box-border rounded-[3.5px] w-[42px] h-[27px] bg-white/60">
-                            <!-- SVG Mockup for Agent Layout -->
-                            <div style="width: 18px; height: 6px; background: white; opacity: 0.55;"></div>
-                            <div style="width: 15px; height: 3px; background: #7C818E; opacity: 0.34; margin-top: 4px; border-radius: 99px;"></div>
-                        </div>
-                    </div>
-                    <span class="text-xs text-[var(--cursor-text-secondary)]">Agent</span>
-                </div>
-                <div class="flex flex-col items-center gap-2 cursor-pointer" style="opacity: 1;">
-                    <div class="flex items-center justify-center rounded-md transition-colors" style="outline: white solid 1.5px; height: 36px; width: 52px; background: linear-gradient(rgb(73, 96, 157) 0%, rgb(240, 181, 99) 99.52%);">
-                        <div class="flex items-center overflow-hidden box-border rounded-[3.5px] w-[42px] h-[27px] bg-white/60">
-                            <!-- SVG Mockup for Editor Layout -->
-                            <div class="flex flex-col gap-[2px] p-[2px]">
-                                <div style="width: 6px; height: 1.5px; background: #7C818E; border-radius: 99px;"></div>
-                                <div style="width: 6px; height: 1.5px; background: #7C818E; border-radius: 99px;"></div>
-                                <div style="width: 6px; height: 1.5px; background: #7C818E; border-radius: 99px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <span class="text-xs text-[var(--cursor-text-secondary)]">Editor</span>
-                </div>
+        <SettingsItem
+          setting-key="language"
+          label="Language"
+          description="Preferred language for Claude responses"
+        >
+          <template #default="{ displayValue, update }">
+            <TextInput
+              :model-value="displayValue ?? ''"
+              @change="update"
+              placeholder="e.g. japanese, chinese"
+              class="general-input"
+            />
+          </template>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="outputStyle"
+          label="Output Style"
+          description="Adjust Claude's response style"
+          :divider="true"
+        >
+          <template #default="{ displayValue, update }">
+            <TextInput
+              :model-value="displayValue ?? ''"
+              @change="update"
+              placeholder="e.g. Explanatory, Concise"
+              class="general-input"
+            />
+          </template>
+        </SettingsItem>
+      </SettingsSubSection>
+    </SettingsSection>
+
+    <!-- Agent Behavior Section -->
+    <SettingsSection title="Agent Behavior">
+      <SettingsSubSection>
+        <SettingsItem
+          setting-key="respectGitignore"
+          label="Respect .gitignore"
+          description="Exclude files matching .gitignore patterns from context"
+        >
+          <template #default="{ effectiveValue, update }">
+            <div class="cursor-settings-cell-switch-container">
+              <Switch
+                :model-value="effectiveValue ?? true"
+                @update:model-value="update"
+                title="Respect .gitignore"
+              />
             </div>
           </template>
-        </SettingsCell>
-        <SettingsCell label="Editor Settings" description="Configure font, formatting, minimap and more" :divider="true">
-          <template #trailing>
-            <Button variant="tertiary" size="small">Open</Button>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="teammateMode"
+          label="Teammate Mode"
+          description="How parallel agent teammates are displayed"
+          :divider="true"
+        >
+          <template #default="{ effectiveValue, update }">
+            <Dropdown
+              :model-value="effectiveValue ?? 'auto'"
+              @update:model-value="update"
+              :options="teammateModeOptions"
+              menu-align="right"
+            >
+              <template #trigger="{ selected }">
+                {{ selected?.label || effectiveValue || 'Auto' }}
+              </template>
+            </Dropdown>
           </template>
-        </SettingsCell>
-        <SettingsCell label="Keyboard Shortcuts" description="Configure keyboard shortcuts" :divider="true">
-          <template #trailing>
-            <Button variant="tertiary" size="small">Open</Button>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="plansDirectory"
+          label="Plans Directory"
+          description="Relative path for storing plan files"
+          :divider="true"
+        >
+          <template #default="{ displayValue, update }">
+            <TextInput
+              :model-value="displayValue ?? ''"
+              @change="update"
+              placeholder="~/.claude/plans"
+              monospace
+              class="general-input"
+            />
           </template>
-        </SettingsCell>
-        <SettingsCell label="Import Settings from VS Code" description="Import settings, extensions, and keybindings from VS Code" :divider="true">
-          <template #trailing>
-            <Button variant="tertiary" size="small">Import</Button>
-          </template>
-        </SettingsCell>
+        </SettingsItem>
       </SettingsSubSection>
+    </SettingsSection>
 
-      <!-- Reset Sub-Section -->
+    <!-- UI & Experience Section -->
+    <!-- TUI-only settings (not applicable to extension, kept for reference):
+         spinnerTipsEnabled, terminalProgressBarEnabled, prefersReducedMotion -->
+    <SettingsSection title="UI & Experience">
       <SettingsSubSection>
-        <SettingsCell label="Reset &quot;Don’t Ask Again&quot; Dialogs" description="See warnings and tips that you’ve hidden">
-          <template #trailing>
-            <Button variant="tertiary" size="small">Show</Button>
+        <SettingsItem
+          setting-key="showTurnDuration"
+          label="Show Turn Duration"
+          description="Display response time after each turn"
+        >
+          <template #default="{ effectiveValue, update }">
+            <div class="cursor-settings-cell-switch-container">
+              <Switch
+                :model-value="effectiveValue ?? false"
+                @update:model-value="update"
+                title="Show Turn Duration"
+              />
+            </div>
           </template>
-        </SettingsCell>
+        </SettingsItem>
       </SettingsSubSection>
     </SettingsSection>
 
     <!-- Notifications Section -->
     <SettingsSection title="Notifications">
       <SettingsSubSection>
-        <SettingsCell label="System Notifications" description="Show system notifications when Agent completes or needs attention">
-          <template #trailing>
+        <SettingsItem
+          setting-key="systemNotifications"
+          label="System Notifications"
+          description="Show system notifications when Agent completes or needs attention"
+        >
+          <template #default="{ effectiveValue, update }">
             <div class="cursor-settings-cell-switch-container">
               <Switch
-                :model-value="settings.systemNotifications"
-                @update:model-value="updateSetting('systemNotifications', $event)"
+                :model-value="effectiveValue ?? false"
+                @update:model-value="update"
                 title="System Notifications"
               />
             </div>
           </template>
-        </SettingsCell>
-        <SettingsCell label="Menu Bar Icon" description="Show Cursor in menu bar" :divider="true">
-          <template #trailing>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="completionSound"
+          label="Completion Sound"
+          description="Play a sound when Agent finishes responding"
+          :divider="true"
+        >
+          <template #default="{ effectiveValue, update }">
             <div class="cursor-settings-cell-switch-container">
-              <Switch
-                :model-value="settings.menuBarIcon"
-                @update:model-value="updateSetting('menuBarIcon', $event)"
-                title="Menu Bar Icon"
-              />
+              <Switch :model-value="effectiveValue ?? false" @update:model-value="update" title="Completion Sound" />
             </div>
           </template>
-        </SettingsCell>
-        <SettingsCell label="Completion Sound" description="Play a sound when Agent finishes responding" :divider="true">
+        </SettingsItem>
+      </SettingsSubSection>
+    </SettingsSection>
+
+    <!-- Git Attribution Section -->
+    <SettingsSection title="Git Attribution">
+      <SettingsSubSection>
+        <SettingsItem
+          setting-key="attribution"
+          label="Commit Message"
+          description="Text appended to git commit messages made by Claude"
+        >
+          <template #default="{ displayValue, effectiveValue, update }">
+            <TextInput
+              :model-value="(displayValue as any)?.commit ?? ''"
+              @change="(val: string) => update({ ...(displayValue || effectiveValue || {}), commit: val || undefined })"
+              placeholder="Generated with Claude"
+              class="general-input"
+            />
+          </template>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="attribution"
+          label="PR Description"
+          description="Text appended to pull request descriptions made by Claude"
+          :divider="true"
+        >
+          <template #default="{ displayValue, effectiveValue, update }">
+            <TextInput
+              :model-value="(displayValue as any)?.pr ?? ''"
+              @change="(val: string) => update({ ...(displayValue || effectiveValue || {}), pr: val || undefined })"
+              placeholder="Generated with Claude"
+              class="general-input"
+            />
+          </template>
+        </SettingsItem>
+      </SettingsSubSection>
+    </SettingsSection>
+
+    <!-- Chat History Section -->
+    <SettingsSection title="Chat History">
+      <SettingsSubSection>
+        <SettingsCell
+          label="Cleanup Period"
+          description="How long to locally retain chat transcripts based on last activity date"
+        >
           <template #trailing>
-            <div class="cursor-settings-cell-switch-container">
-              <Switch
-                :model-value="settings.completionSound"
-                @update:model-value="updateSetting('completionSound', $event)"
-                title="Completion Sound"
+            <div class="flex items-center gap-2">
+              <NumberInput
+                :model-value="cleanupPeriodDays"
+                @update:model-value="updateCleanupPeriod"
+                :min="1"
+                width="68px"
               />
+              <span class="text-xs text-(--cursor-text-secondary)">days</span>
             </div>
           </template>
         </SettingsCell>
       </SettingsSubSection>
     </SettingsSection>
 
-    <!-- Privacy Section -->
-    <SettingsSection title="Privacy">
+    <!-- Advanced Section -->
+    <SettingsSection title="Advanced">
       <SettingsSubSection>
-        <SettingsCell description="Your code data will not be trained on or used to improve the product. We will not store your code.">
-          <template #label>
-            <div><div class="codicon codicon-lock" style="font-size: 12px; margin-right: 2px;"></div>Privacy Mode (Legacy)</div>
-          </template>
-          <template #trailing>
+        <SettingsItem
+          setting-key="autoUpdatesChannel"
+          label="Updates Channel"
+          description="Choose between stable releases or latest builds"
+        >
+          <template #default="{ effectiveValue, update }">
             <Dropdown
-              :model-value="settings.privacyMode"
-              @update:model-value="updateSetting('privacyMode', $event)"
-              :options="privacyOptions"
+              :model-value="effectiveValue ?? 'stable'"
+              @update:model-value="update"
+              :options="updatesChannelOptions"
               menu-align="right"
             >
               <template #trigger="{ selected }">
-                {{ selected?.label || 'Privacy Mode (Legacy)' }}
+                {{ selected?.label || effectiveValue || 'Stable' }}
               </template>
             </Dropdown>
           </template>
-        </SettingsCell>
-        <SettingsCell :divider="true">
-          <template #description>
-            Privacy Mode (Legacy) is enabled. Background Agent and some features not available.
-            <div style="margin-top: 6px;"><span style="cursor: pointer; color: var(--vscode-textLink-foreground);">Switch to Privacy Mode</span></div>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="forceLoginMethod"
+          label="Login Method"
+          description="Restrict authentication to a specific method"
+          :divider="true"
+        >
+          <template #default="{ effectiveValue, update }">
+            <Dropdown
+              :model-value="effectiveValue || 'none'"
+              @update:model-value="(val: string) => update(val === 'none' ? '' : val)"
+              :options="loginMethodOptions"
+              menu-align="right"
+            >
+              <template #trigger="{ selected }">
+                {{ selected?.label || 'Not restricted' }}
+              </template>
+            </Dropdown>
           </template>
-        </SettingsCell>
+        </SettingsItem>
+        <SettingsItem
+          setting-key="apiKeyHelper"
+          label="API Key Helper"
+          description="Custom script to generate authentication tokens"
+          :divider="true"
+        >
+          <template #default="{ displayValue, update }">
+            <TextInput
+              :model-value="displayValue ?? ''"
+              @change="update"
+              placeholder="/path/to/script.sh"
+              monospace
+              class="general-input"
+            />
+          </template>
+        </SettingsItem>
       </SettingsSubSection>
     </SettingsSection>
-
-    <div class="cursor-settings-tab-footer-actions">
-      <Button variant="tertiary" size="small">Log Out</Button>
-    </div>
   </SettingsTab>
 </template>
 
 <script setup lang="ts">
-import SettingsTab from '../SettingsTab.vue'
-import SettingsSection from '../SettingsSection.vue'
-import SettingsSubSection from '../SettingsSubSection.vue'
-import SettingsCell from '../SettingsCell.vue'
-import Switch from '../../Common/Switch.vue'
-import Dropdown from '../../Common/Dropdown.vue'
-import Button from '../../Common/Button.vue'
-import { useSettingsStore } from '../../../composables/useSettingsStore'
+import { ref, computed, onMounted } from 'vue';
+import SettingsTab from '../SettingsTab.vue';
+import SettingsSection from '../SettingsSection.vue';
+import SettingsSubSection from '../SettingsSubSection.vue';
+import SettingsCell from '../SettingsCell.vue';
+import SettingsItem from '../SettingsItem.vue';
+import Switch from '../../Common/Switch.vue';
+import Dropdown from '../../Common/Dropdown.vue';
+import TextInput from '../../Common/TextInput.vue';
+import NumberInput from '../../Common/NumberInput.vue';
+import { useSettingsStore } from '../../../composables/useSettingsStore';
+import { transport } from '../../../core/runtimeTransport';
 
-const { settings, updateSetting } = useSettingsStore()
+const { settings, updateSetting } = useSettingsStore();
 
-const privacyOptions = [
-  { label: 'Share Data', value: 'share', description: 'Improve Cursor for everyone' },
-  { label: 'Privacy Mode', value: 'privacy', description: 'No training. Code may be stored for Background Agent and other features.' },
-]
+// ── Chat History ──
+const cleanupPeriodDays = computed(() => settings.value.cleanupPeriodDays ?? 720);
+const updateCleanupPeriod = (value: number) => {
+  updateSetting('cleanupPeriodDays', value, 'global');
+};
+
+// ── Extension Config (Pipeline B — ~/.claudix.json) ──
+const defaultPermissionMode = ref('default');
+const defaultThinkingLevel = ref('default_on');
+
+onMounted(async () => {
+  try {
+    const response = await transport.getExtensionConfig();
+    if (response?.config) {
+      defaultPermissionMode.value = response.config.defaultPermissionMode || 'default';
+      defaultThinkingLevel.value = response.config.defaultThinkingLevel || 'default_on';
+    }
+  } catch (e) {
+    console.error('Failed to load extension config:', e);
+  }
+});
+
+async function updateExtensionSetting(key: string, value: any) {
+  try {
+    await transport.updateExtensionConfig(key, value);
+    switch (key) {
+      case 'defaultPermissionMode':
+        defaultPermissionMode.value = value;
+        break;
+      case 'defaultThinkingLevel':
+        defaultThinkingLevel.value = value;
+        break;
+    }
+  } catch (e) {
+    console.error('Failed to update extension config:', e);
+  }
+}
+
+// ── Dropdown Options ──
+
+const permissionModeOptions = [
+  { label: 'Default', value: 'default', description: 'Standard behavior, prompt for dangerous operations' },
+  { label: 'Accept Edits', value: 'acceptEdits', description: 'Automatically accept file edits' },
+  { label: 'Plan Mode', value: 'plan', description: 'Planning only, no actual execution' },
+  { label: "Don't Ask", value: 'dontAsk', description: "Don't prompt, deny if not pre-approved" },
+];
+
+const teammateModeOptions = [
+  { label: 'Auto', value: 'auto', description: 'Automatically choose display mode' },
+  { label: 'In-Process', value: 'in-process', description: 'Run teammates in-process' },
+  { label: 'Tmux', value: 'tmux', description: 'Run teammates in tmux panes' },
+];
+
+const updatesChannelOptions = [
+  { label: 'Stable', value: 'stable', description: 'Stable releases only' },
+  { label: 'Latest', value: 'latest', description: 'Include pre-release builds' },
+];
+
+const loginMethodOptions = [
+  { label: 'Not restricted', value: 'none', description: 'Allow any login method' },
+  { label: 'Claude.ai', value: 'claudeai', description: 'Restrict to Claude.ai accounts' },
+  { label: 'Console', value: 'console', description: 'Restrict to Anthropic Console API' },
+];
 </script>
+
+<style scoped>
+.general-input {
+  width: 200px;
+}
+</style>

@@ -35,6 +35,7 @@ defineProps<{
     color: var(--cursor-text-tertiary);
     font-size: 12px;
     line-height: 14px;
-    padding: 0 8px
+    padding: 0 8px;
+    user-select: none
 }
 </style>

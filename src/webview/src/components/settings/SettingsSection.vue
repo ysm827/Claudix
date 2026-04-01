@@ -57,7 +57,8 @@ defineProps<{
     font-size: 12px;
     font-weight: 400;
     letter-spacing: .07px;
-    line-height: 14px
+    line-height: 14px;
+    user-select: none
 }
 
 .cursor-settings-section-header-description {

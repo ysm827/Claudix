@@ -9,35 +9,58 @@
         <p class="cursor-settings-sidebar-header-plan">Ultra Plan</p>
       </div>
     </div>
+
+    <!-- Profile Selector -->
+    <div class="px-3">
+      <ProfileSelector
+        :model-value="currentProfileValue"
+        @update:model-value="handleProfileSwitch"
+        :options="profileOptions"
+        class="w-full"
+      />
+    </div>
+
     <div class="cursor-settings-sidebar-content">
       <div>
         <input
           type="text"
           placeholder="Search settings ⌘F"
-          style="width: 100%; padding: 6px; box-sizing: border-box; font-size: 12px; border: 1px solid color-mix(in srgb, var(--vscode-input-border) 50%, transparent); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 4px;"
+          style="
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+            font-size: 12px;
+            border: 1px solid color-mix(in srgb, var(--vscode-input-border) 50%, transparent);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border-radius: 4px;
+          "
         />
       </div>
       <div class="cursor-settings-sidebar-cells">
         <template v-for="tab in tabs" :key="tab.id">
           <div
             class="cursor-settings-sidebar-cell"
-            :style="activeTab === tab.id ? 'background-color: var(--vscode-list-inactiveSelectionBackground); color: var(--vscode-list-inactiveSelectionForeground);' : 'background-color: transparent;'"
+            :class="{ 'cursor-settings-sidebar-cell-active': activeTab === tab.id }"
             @click="$emit('update:activeTab', tab.id)"
           >
-            <span :class="['codicon', tab.icon]" style="font-size: 16px;"></span>
-            <span class="cursor-settings-sidebar-cell-label" :title="tab.label">{{ tab.label }}</span>
+            <span :class="getIconClass(tab.icon)" style="font-size: 16px"></span>
+            <span class="cursor-settings-sidebar-cell-label" :title="tab.label">{{
+              tab.label
+            }}</span>
           </div>
-          <div v-if="tab.divider" class="w-full my-2">
-            <hr class="cursor-settings-sidebar-divider">
-          </div>
+          <Separator v-if="tab.divider" class="sidebar-divider" />
         </template>
       </div>
-      <hr class="cursor-settings-sidebar-divider" />
+      <Separator class="sidebar-divider" />
       <div class="cursor-settings-sidebar-footer">
         <div class="cursor-settings-sidebar-cell">
-          <span class="codicon codicon-book" style="font-size: 16px;"></span>
+          <span class="codicon codicon-book" style="font-size: 16px"></span>
           <span class="cursor-settings-sidebar-cell-label" title="Docs">Docs</span>
-          <span class="codicon codicon-link-external" style="font-size: 14px; color: var(--cursor-text-tertiary);"></span>
+          <span
+            class="codicon codicon-link-external"
+            style="font-size: 14px; color: var(--cursor-text-tertiary)"
+          ></span>
         </div>
       </div>
     </div>
@@ -45,16 +68,75 @@
 </template>
 
 <script setup lang="ts">
-import avatarUrl from '../../assets/claudix-avatar.png'
+import { computed } from 'vue';
+import _avatarUrl from '../../assets/claudix-avatar.png';
+const avatarUrl = _avatarUrl;
+import ProfileSelector from './SettingsProfileSelector.vue';
+import Separator from '../Common/Separator.vue';
+import { useSettingsStore } from '../../composables/useSettingsStore';
 
-defineProps<{
-  activeTab: string
-  tabs: Array<{ id: string; label: string; icon: string; divider?: boolean }>
-}>()
+const props = defineProps<{
+  activeTab: string;
+  tabs: Array<{ id: string; label: string; icon: string; divider?: boolean }>;
+}>();
 
-defineEmits<{
-  (e: 'update:activeTab', id: string): void
-}>()
+const emit = defineEmits<{
+  (e: 'update:activeTab', id: string): void;
+}>();
+
+const { activeProfile, profiles, switchProfile } = useSettingsStore();
+
+const currentProfileValue = computed(() => activeProfile.value || 'default');
+
+// No longer needed here if ProfileSelector computes label internally based on options,
+// BUT ProfileSelector uses options prop.
+const currentProfileLabel = computed(() => {
+  if (!activeProfile.value) return 'Default Profile';
+  return activeProfile.value;
+});
+
+const profileOptions = computed(() => {
+  const opts = [{ label: 'Default Profile', value: 'default', description: 'Standard settings' }];
+
+  // Add custom profiles
+  if (profiles.value && profiles.value.length > 0) {
+    profiles.value.forEach((p) => {
+      opts.push({ label: p, value: p, description: 'Custom Profile' });
+    });
+  }
+
+  // Manage action
+  opts.push({
+    label: 'Manage Profiles...',
+    value: 'manage_profiles',
+    description: 'Create or edit profiles'
+  });
+
+  return opts;
+});
+
+const handleProfileSwitch = (val: string) => {
+  if (val === 'manage_profiles') {
+    emit('update:activeTab', 'profiles');
+  } else {
+    const profile = val === 'default' ? null : val;
+    switchProfile(profile);
+  }
+};
+
+/**
+ * 根据图标名称返回对应的 class
+ * 支持 codicon (codicon-xxx) 和 mdi (mdi-xxx) 两种图标
+ */
+const getIconClass = (icon: string): string[] => {
+  if (icon.startsWith('codicon-')) {
+    return ['codicon', icon];
+  } else if (icon.startsWith('mdi-')) {
+    return ['mdi', icon];
+  }
+  // 默认当作 mdi 图标
+  return ['mdi', icon];
+};
 </script>
 
 <style scoped>
@@ -70,7 +152,7 @@ defineEmits<{
     padding-top: 48px;
     position: sticky;
     top: 0;
-    width: clamp(100px,25%,200px)
+    width: clamp(100px, 25%, 200px);
 }
 
 .cursor-settings-sidebar-header {
@@ -79,7 +161,7 @@ defineEmits<{
     flex-direction: row;
     gap: 8px;
     overflow: hidden;
-    width: 100%
+    width: 100%;
 }
 
 .cursor-settings-sidebar-avatar {
@@ -91,7 +173,7 @@ defineEmits<{
     flex-shrink: 0;
     height: 28px;
     justify-content: center;
-    width: 28px
+    width: 28px;
 }
 
 .cursor-settings-sidebar-avatar-img {
@@ -110,30 +192,31 @@ defineEmits<{
     gap: 2px;
     line-height: 16px;
     min-width: 0;
-    overflow: hidden
+    overflow: hidden;
 }
 
 .cursor-settings-sidebar-header-email {
-    color: var(--cursor-text-primary)
+    color: var(--cursor-text-primary);
 }
 
-.cursor-settings-sidebar-header-email,.cursor-settings-sidebar-header-plan {
+.cursor-settings-sidebar-header-email,
+.cursor-settings-sidebar-header-plan {
     display: block;
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 100%
+    width: 100%;
 }
 
 .cursor-settings-sidebar-header-plan {
-    color: var(--cursor-text-secondary)
+    color: var(--cursor-text-secondary);
 }
 
 .cursor-settings-sidebar-cells {
     display: flex;
     flex-direction: column;
-    gap: 1px
+    gap: 1px;
 }
 
 .cursor-settings-sidebar-cell {
@@ -145,17 +228,22 @@ defineEmits<{
     font-size: 12px;
     gap: 6px;
     line-height: 16px;
-    padding: 4px 6px
+    padding: 4px 6px;
 }
 
 .cursor-settings-sidebar-cell-label {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap
+    white-space: nowrap;
+}
+
+.cursor-settings-sidebar-cell-active {
+    background-color: var(--vscode-list-inactiveSelectionBackground);
+    color: var(--vscode-list-inactiveSelectionForeground, var(--vscode-foreground));
 }
 
 .cursor-settings-sidebar-cell:hover {
-    background-color: var(--vscode-list-hoverBackground)!important
+    background-color: var(--vscode-list-hoverBackground) !important;
 }
 
 .cursor-settings-sidebar-cell-notification-badge {
@@ -169,19 +257,21 @@ defineEmits<{
     height: 14px;
     justify-content: center;
     margin-left: auto;
-    width: 14px
+    width: 14px;
 }
 
-.cursor-settings-sidebar-divider {
-    border: none;
-    border-top: 1px solid var(--cursor-stroke-tertiary);
-    margin: 0;
-    width: 100%
+.sidebar-divider {
+    margin: 8px 0;
 }
 
 .cursor-settings-sidebar-content {
     display: flex;
     flex-direction: column;
-    gap: 8px
+    gap: 8px;
+}
+
+.px-3 {
+    padding-left: 12px;
+    padding-right: 12px;
 }
 </style>
