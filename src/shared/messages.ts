@@ -22,6 +22,8 @@ import type {
  */
 export interface BaseMessage {
     type: string;
+    // 可选 WebView 实例标识，用于定向路由响应
+    webviewId?: string;
 }
 
 // ============================================================================
@@ -66,6 +68,23 @@ export interface CloseChannelMessage extends BaseMessage {
     type: "close_channel";
     channelId: string;
     error?: string;
+}
+
+/**
+ * SDK 错误通知（Extension → WebView）
+ *
+ * 当 SDK stderr 检测到致命错误（如流式请求回退失败）时，
+ * 实时推送到前端以便立即展示，不等迭代器超时。
+ */
+export interface LLMRequestErrorMessage extends BaseMessage {
+    type: "sdk_error";
+    channelId: string;
+    /** 人类可读的错误描述（来自上游） */
+    error: string;
+    /** HTTP 状态码 (e.g. "401", "503") */
+    statusCode: string;
+    /** 上游错误类型 (e.g. "authentication_error", "new_api_error") */
+    errorType: string;
 }
 
 // ============================================================================
@@ -231,6 +250,28 @@ export interface GetClaudeStateRequest {
 export interface GetClaudeStateResponse {
     type: "get_claude_state_response";
     config: any;
+}
+
+/**
+ * 一次性 SDK 探测
+ */
+export type SdkProbeCapability =
+    | "supportedCommands"
+    | "supportedModels"
+    | "mcpServerStatus"
+    | "accountInfo"
+    | (string & {});
+
+export interface SdkProbeRequest {
+    type: "sdk_probe";
+    capabilities: SdkProbeCapability[];
+    timeoutMs?: number;
+}
+
+export interface SdkProbeResponse {
+    type: "sdk_probe_response";
+    data: Record<string, any>;
+    errors?: Record<string, string>;
 }
 
 /**
@@ -515,6 +556,66 @@ export interface GetSettingsRequest {
 export interface GetSettingsResponse {
     type: "get_settings_response";
     settings: any;
+  // New fields for Profile Management
+  activeProfile: string | null;
+  profiles: string[];
+  hasWorkspace: boolean;
+  metadata?: Record<
+    string,
+    {
+      effectiveScope: 'managed' | 'cli' | 'profile' | 'local' | 'shared' | 'global' | 'default';
+      values: {
+        managed?: any;
+        cli?: any;
+        profile?: any;
+        local?: any;
+        shared?: any;
+        global?: any;
+        default?: any;
+      };
+    }
+  >;
+}
+
+/**
+ * 切换 Profile 请求
+ */
+export interface SwitchProfileRequest {
+  type: 'switch_profile';
+  profile: string | null; // null for default
+}
+
+export interface SwitchProfileResponse {
+  type: 'switch_profile_response';
+  success: boolean;
+}
+
+/**
+ * 创建 Profile 请求
+ */
+export interface CreateProfileRequest {
+  type: 'create_profile';
+  name: string;
+}
+
+export interface CreateProfileResponse {
+  type: 'create_profile_response';
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * 删除 Profile 请求
+ */
+export interface DeleteProfileRequest {
+  type: 'delete_profile';
+  name: string;
+}
+
+export interface DeleteProfileResponse {
+  type: 'delete_profile_response';
+  success: boolean;
+  error?: string;
 }
 
 /**
@@ -524,10 +625,59 @@ export interface UpdateSettingRequest {
     type: "update_setting";
     key: string;
     value: any;
+    target?: 'local' | 'shared' | 'global';
 }
 
 export interface UpdateSettingResponse {
     type: "update_setting_response";
+    success: boolean;
+}
+
+/**
+ * 重置设置请求（删除某层的值，回落到继承）
+ */
+export interface ResetSettingRequest {
+    type: "reset_setting";
+    key: string;
+    target: 'local' | 'shared' | 'global';
+}
+
+export interface ResetSettingResponse {
+    type: "reset_setting_response";
+    success: boolean;
+}
+
+/**
+ * 获取扩展配置请求 (~/.claudix.json)
+ */
+export interface GetExtensionConfigRequest {
+    type: "get_extension_config";
+}
+
+export interface GetExtensionConfigResponse {
+    type: "get_extension_config_response";
+    config: {
+        defaultPermissionMode: string;
+        defaultModel: string;
+        defaultThinkingLevel: string;
+        systemNotifications: boolean;
+        completionSound: boolean;
+        customModels: Array<{ id: string; name?: string }>;
+        disabledModels: string[];
+    };
+}
+
+/**
+ * 更新扩展配置请求
+ */
+export interface UpdateExtensionConfigRequest {
+    type: "update_extension_config";
+    key: string;
+    value: any;
+}
+
+export interface UpdateExtensionConfigResponse {
+    type: "update_extension_config_response";
     success: boolean;
 }
 
@@ -570,6 +720,15 @@ export interface SelectionChangedRequest {
 }
 
 /**
+ * 扩展配置变更通知 (Extension → WebView broadcast)
+ */
+export interface ExtensionConfigChangedRequest {
+    type: "extension_config_changed";
+    key: string;
+    value: any;
+}
+
+/**
  * 状态更新
  */
 export interface UpdateStateRequest {
@@ -602,6 +761,7 @@ export type WebViewToExtensionMessage =
 export type ExtensionToWebViewMessage =
     | IOMessage
     | CloseChannelMessage
+    | LLMRequestErrorMessage
     | RequestMessage
     | ResponseMessage;
 
@@ -633,6 +793,7 @@ export type WebViewRequest =
     | NewConversationTabRequest
     | RenameTabRequest
     | GetClaudeStateRequest
+    | SdkProbeRequest
     | GetMcpServersRequest
     | GetAssetUrisRequest
     | ListSessionsRequest
@@ -648,7 +809,13 @@ export type WebViewRequest =
     | OpenConfigFileRequest
     | OpenClaudeInTerminalRequest
     | GetSettingsRequest
-    | UpdateSettingRequest;
+    | UpdateSettingRequest
+    | ResetSettingRequest
+    | SwitchProfileRequest
+    | CreateProfileRequest
+    | DeleteProfileRequest
+    | GetExtensionConfigRequest
+    | UpdateExtensionConfigRequest;
 
 /**
  * Extension → WebView 的所有响应类型
@@ -666,6 +833,7 @@ export type WebViewRequestResponse =
     | NewConversationTabResponse
     | RenameTabResponse
     | GetClaudeStateResponse
+    | SdkProbeResponse
     | GetMcpServersResponse
     | GetAssetUrisResponse
     | ListSessionsResponse
@@ -681,7 +849,13 @@ export type WebViewRequestResponse =
     | OpenConfigFileResponse
     | OpenClaudeInTerminalResponse
     | GetSettingsResponse
-    | UpdateSettingResponse;
+    | UpdateSettingResponse
+    | ResetSettingResponse
+    | SwitchProfileResponse
+    | CreateProfileResponse
+    | DeleteProfileResponse
+    | GetExtensionConfigResponse
+    | UpdateExtensionConfigResponse;
 
 /**
  * Extension → WebView 的所有请求类型

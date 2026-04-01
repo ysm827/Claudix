@@ -114,6 +114,13 @@ export interface IFileSystemService {
 	 */
 	pathExists(target: string): Promise<boolean>;
 
+  /**
+   * 检查文件是否可执行
+   * @param target 目标路径
+   * @returns 是否可执行
+   */
+  isExecutable(target: string): Promise<boolean>;
+
 	/**
 	 * 清理文件名（移除非法字符）
 	 * @param fileName 原始文件名
@@ -553,6 +560,20 @@ export class FileSystemService implements IFileSystemService {
 
 		return path.normalize(absolute);
 	}
+
+  /**
+   * 检查文件是否可执行
+   * @param target 目标路径
+   * @returns 是否可执行
+   */
+  async isExecutable(target: string): Promise<boolean> {
+    try {
+      await require('fs').promises.access(target, require('fs').constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
 	/**
 	 * 检查路径是否存在
