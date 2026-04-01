@@ -1,5 +1,5 @@
 <template>
-  <div :id="item.id || `item-${index}`">
+  <div :id="item.id || `item-${index}`" class="dropdown-menu-item-wrapper">
     <div
       ref="itemRef"
       class="dropdown-menu-item rounded"
@@ -94,14 +94,22 @@ function handleMouseEnter() {
 </script>
 
 <style scoped>
+.dropdown-menu-item-wrapper {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .dropdown-menu-item {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
   padding: 0.125rem 0.375rem;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   cursor: pointer;
   color: var(--vscode-foreground);
+  user-select: none;
 }
 
 /* Hover 样式：较浅的高亮 */
@@ -161,7 +169,8 @@ function handleMouseEnter() {
   justify-content: space-between;
   align-items: center;
   min-width: 0;
-  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .menu-item-left-section {
@@ -169,6 +178,8 @@ function handleMouseEnter() {
   align-items: center;
   gap: 0.25rem;
   min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0;
   height: 16px;
 }
 
@@ -195,18 +206,19 @@ function handleMouseEnter() {
 
 .menu-item-text-section {
   display: flex;
-  width: 100%;
   align-items: center;
   min-width: 0;
+  overflow: hidden;
+  flex: 1 1 0;
   gap: 0.25rem;
   height: 17px;
 }
 
 .file-info-container,
 .option-info-container {
-  max-width: 100%;
   color: var(--vscode-panelTitle-activeForeground);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 

@@ -72,11 +72,13 @@ import { ref, computed, onMounted, onUnmounted, nextTick, type CSSProperties } f
 interface Props {
   height?: string | number
   width?: string | number
+  horizontalScroll?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   height: '100%',
-  width: '100%'
+  width: '100%',
+  horizontalScroll: true
 })
 
 // DOM 引用
@@ -108,7 +110,7 @@ const dragStartScroll = ref(0)
 
 // 计算属性
 const showVerticalScrollbar = computed(() => scrollHeight.value > clientHeight.value)
-const showHorizontalScrollbar = computed(() => scrollWidth.value > clientWidth.value)
+const showHorizontalScrollbar = computed(() => props.horizontalScroll && scrollWidth.value > clientWidth.value)
 
 const isScrolledToBottom = computed(() => {
   return scrollTop.value >= scrollHeight.value - clientHeight.value - 1

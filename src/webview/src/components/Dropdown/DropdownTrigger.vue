@@ -46,7 +46,7 @@
         <slot name="header" />
 
         <!-- 中部可滚动区域（自适应高度 + 最大高度限制） -->
-        <ScrollableElement ref="scrollableRef">
+        <ScrollableElement ref="scrollableRef" :horizontal-scroll="false">
           <div class="menu-content">
             <slot
               name="content"
@@ -387,6 +387,7 @@ defineExpose({
   outline: none;
   width: 100%;
   height: 100%;
+  overflow: hidden;
 }
 
 .dropdown-trigger-backdrop {
@@ -433,5 +434,9 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
+
 </style>

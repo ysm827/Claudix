@@ -169,10 +169,6 @@ export function isSystemMessage(msg: Message): boolean {
   return msg.type === 'system';
 }
 
-export function isResultMessage(msg: Message): boolean {
-  return msg.type === 'result';
-}
-
 /**
  * 获取特殊消息类型
  *
@@ -183,7 +179,7 @@ function getSpecialMessageType(contentBlocks: ContentBlockType[]): MessageRole |
   if (contentBlocks.length === 1) {
     const blockType = contentBlocks[0].type;
 
-    if (blockType === 'interrupt') {
+    if (blockType === 'interrupt' || blockType === 'llm_error') {
       return 'tip';
     }
 

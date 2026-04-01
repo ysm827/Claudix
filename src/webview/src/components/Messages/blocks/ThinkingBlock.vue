@@ -1,30 +1,28 @@
 <template>
   <div class="thinking-block">
-    <div class="thinking-header" @click="toggleExpanded">
-      <span class="thinking-label">Thinking...</span>
-      <span class="codicon" :class="expanded ? 'codicon-chevron-up' : 'codicon-chevron-down'" />
-    </div>
-    <div v-if="expanded" class="thinking-content">
-      {{ block.thinking }}
-    </div>
+    <Collapsible>
+      <template #trigger="{ open }">
+        <div class="thinking-header">
+          <span class="thinking-label">Thinking...</span>
+          <span class="codicon" :class="open ? 'codicon-chevron-up' : 'codicon-chevron-down'" />
+        </div>
+      </template>
+      <div class="thinking-content">
+        {{ block.thinking }}
+      </div>
+    </Collapsible>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { ThinkingBlock as ThinkingBlockType } from '../../../models/ContentBlock';
+import Collapsible from '../../Common/Collapsible.vue'
+import type { ThinkingBlock as ThinkingBlockType } from '../../../models/ContentBlock'
 
 interface Props {
-  block: ThinkingBlockType;
+  block: ThinkingBlockType
 }
 
-defineProps<Props>();
-
-const expanded = ref(false);
-
-function toggleExpanded() {
-  expanded.value = !expanded.value;
-}
+defineProps<Props>()
 </script>
 
 <style scoped>

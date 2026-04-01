@@ -15,7 +15,6 @@ import type { ToolContext } from '../../types/tool';
 import UserMessage from './UserMessage.vue';
 import AssistantMessage from './AssistantMessage.vue';
 import SystemMessage from './SystemMessage.vue';
-import ResultMessage from './ResultMessage.vue';
 import TipMessage from './TipMessage.vue';
 import SlashCommandResultMessage from './SlashCommandResultMessage.vue';
 
@@ -39,8 +38,6 @@ const messageComponent = computed(() => {
       return SlashCommandResultMessage;
     case 'system':
       return SystemMessage;
-    case 'result':
-      return ResultMessage;
     default:
       return null;
   }
